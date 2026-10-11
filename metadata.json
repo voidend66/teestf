@@ -1,0 +1,8 @@
+{
+  "name": "مطب دکتر اکبر شهیدی پیام",
+  "description": "متخصص جراحی دهان، فک و صورت و ایمپلنتولوژیست با بیش از ۱۴ سال تجربه تخصصی | ایمپلنت دیجیتال، جراحی فک، سینوس لیفت و نوبت‌دهی آنلاین",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

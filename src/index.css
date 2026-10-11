@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    font-family: 'Vazirmatn', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: "ss01" on; /* Enable native Persian digits */
+    scroll-behavior: smooth;
+    direction: rtl;
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+:root {
+  --navy-primary: #122457;
+  --navy-secondary: #1e3a8a;
+  --gold-accent: #d4af37;
+  --gold-dark: #b48c1e;
+}
