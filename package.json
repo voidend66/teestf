@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:8085": "tsx server.ts --port 8085",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
+    "start:8085": "node dist/server.cjs --port 8085",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "lint": "tsc --noEmit"
   },

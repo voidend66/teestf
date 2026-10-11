@@ -28,8 +28,10 @@ function requireApiKey(req: Request, res: Response, next: NextFunction) {
 
 async function startServer() {
   const app = express();
-  // Support dynamic port configuration (e.g. PORT=8088 or container default 3000)
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  // Support dynamic port configuration: CLI argument --port, environment variable PORT, or default
+  const portIndex = process.argv.indexOf('--port');
+  const cliPort = portIndex !== -1 && process.argv[portIndex + 1] ? parseInt(process.argv[portIndex + 1], 10) : null;
+  const PORT = cliPort || (process.env.PORT ? parseInt(process.env.PORT, 10) : 3000);
 
   // Global Middlewares
   app.use(cors({
