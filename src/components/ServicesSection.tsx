@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { ArrowLeft, CheckCircle2, Calendar } from 'lucide-react';
 import { servicesData, procedureArticles } from '../data/doctorData';
 import { ServiceItem, ProcedureArticle } from '../types';
+import { getServiceImageUrl, DEFAULT_MEDICAL_FALLBACK } from '../utils/imageHelper';
 
 interface ServicesSectionProps {
   onSelectArticle: (article: ProcedureArticle) => void;
   onBookService: (serviceTitle: string) => void;
   services?: ServiceItem[];
+  articles?: ProcedureArticle[];
 }
 
 const getServiceCodeAndCategory = (id: string, index: number) => {
@@ -28,7 +30,7 @@ const getServiceCodeAndCategory = (id: string, index: number) => {
   }
 };
 
-export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectArticle, onBookService, services }) => {
+export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectArticle, onBookService, services, articles }) => {
   const displayServices = services && services.length > 0 ? services : servicesData;
   const [activeFilter, setActiveFilter] = useState<'all' | 'implant' | 'surgery'>('all');
 
@@ -43,7 +45,8 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectArticl
   });
 
   const handleCardClick = (service: ServiceItem) => {
-    const matched = procedureArticles.find((art) => art.slug === service.slug) || procedureArticles[0];
+    const list = articles && articles.length > 0 ? articles : procedureArticles;
+    const matched = list.find((art) => art.slug === service.slug) || list[0];
     onSelectArticle(matched);
   };
 
@@ -133,11 +136,17 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectArticl
                   {/* Compact Clinical Photo Thumbnail */}
                   <div className="relative h-36 sm:h-40 rounded-xl overflow-hidden bg-slate-100 mb-4 border border-slate-100 shadow-xs">
                     <img
-                      src={service.image}
+                      src={getServiceImageUrl(service)}
                       alt={service.title}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       loading="lazy"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (target.src !== DEFAULT_MEDICAL_FALLBACK) {
+                          target.src = DEFAULT_MEDICAL_FALLBACK;
+                        }
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
                   </div>

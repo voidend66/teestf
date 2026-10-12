@@ -26,6 +26,9 @@ export interface ServiceItem {
   shortDesc: string;
   iconName: string;
   image: string;
+  imageUrl?: string;
+  featuredImage?: string;
+  relativeImageUrl?: string;
   slug: string;
   highlights: string[];
 }
@@ -38,6 +41,10 @@ export interface ProcedureArticle {
   publishDate: string;
   readTime: string;
   heroImage: string;
+  featuredImage?: string;
+  imageUrl?: string;
+  image?: string;
+  relativeImageUrl?: string;
   imageCaption?: string;
   summary: string;
   sections: {

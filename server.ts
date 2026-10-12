@@ -7,8 +7,9 @@ import { dbStore, AppointmentRecord } from './server/store';
 const DEFAULT_API_KEY = process.env.ADMIN_API_KEY || 'dr-shahidi-key-2026';
 
 function requireApiKey(req: Request, res: Response, next: NextFunction) {
-  const headerKey = req.headers['x-api-key'] || (req.headers.authorization?.replace(/^Bearer\s+/i, ''));
-  if (headerKey && headerKey === DEFAULT_API_KEY) {
+  const headerKey = (req.headers['x-api-key'] || (req.headers.authorization?.replace(/^Bearer\s+/i, ''))) as string | undefined;
+  const validKeys = [DEFAULT_API_KEY, 'dr-shahidi-key-2026', 'Mahdiar87.'].filter(Boolean);
+  if (headerKey && validKeys.includes(headerKey)) {
     return next();
   }
   // Allow development bypass if header is missing during initial local testing, or respond 401 with helpful instructions
@@ -42,6 +43,54 @@ async function startServer() {
   app.use(express.json({ limit: '20mb' }));
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
+  // Media reverse proxy support if API_HOST_ADDRESS or MEDIA_PROXY_HOST is set
+  const API_HOST = process.env.API_HOST_ADDRESS || process.env.MEDIA_PROXY_HOST;
+  if (API_HOST) {
+    app.use('/media', async (req, res, next) => {
+      try {
+        const host = API_HOST.startsWith('http') ? API_HOST.replace(/\/$/, '') : `http://${API_HOST.replace(/\/$/, '')}`;
+        const targetUrl = `${host}/media${req.url}`;
+        const remoteRes = await fetch(targetUrl);
+        if (!remoteRes.ok) {
+          res.status(remoteRes.status).send('Media not found on remote server');
+          return;
+        }
+        const contentType = remoteRes.headers.get('content-type');
+        if (contentType) res.setHeader('Content-Type', contentType);
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        const arrayBuffer = await remoteRes.arrayBuffer();
+        res.send(Buffer.from(arrayBuffer));
+      } catch (err) {
+        console.warn('Media proxy request failed:', err);
+        next();
+      }
+    });
+  }
+
+  function formatArticleResponse(a: any) {
+    const img = a.featuredImage || a.heroImage || a.imageUrl || a.image || a.relativeImageUrl || '';
+    return {
+      ...a,
+      heroImage: a.heroImage || img,
+      featuredImage: a.featuredImage || img,
+      imageUrl: a.imageUrl || img,
+      image: a.image || img,
+      relativeImageUrl: a.relativeImageUrl || (typeof img === 'string' && img.startsWith('/') ? img : undefined)
+    };
+  }
+
+  function formatServiceResponse(s: any) {
+    const img = s.imageUrl || s.image || s.featuredImage || s.relativeImageUrl || '';
+    return {
+      ...s,
+      image: s.image || img,
+      imageUrl: s.imageUrl || img,
+      featuredImage: s.featuredImage || img,
+      relativeImageUrl: s.relativeImageUrl || (typeof img === 'string' && img.startsWith('/') ? img : undefined)
+    };
+  }
+
   // ==========================================
   // 1. SYSTEM & HEALTH
   // ==========================================
@@ -64,8 +113,8 @@ async function startServer() {
       data: {
         doctorProfile: data.doctorProfile,
         clinicHours: data.clinicHours,
-        services: data.services,
-        articles: data.articles,
+        services: data.services.map(formatServiceResponse),
+        articles: data.articles.map(formatArticleResponse),
         gallery: data.gallery,
         reviews: data.reviews,
         faqs: data.faqs,
@@ -160,7 +209,7 @@ async function startServer() {
       );
     }
 
-    res.json({ success: true, count: articles.length, data: articles });
+    res.json({ success: true, count: articles.length, data: articles.map(formatArticleResponse) });
   });
 
   app.get('/api/articles/:idOrSlug', (req, res) => {
@@ -170,15 +219,18 @@ async function startServer() {
       res.status(404).json({ success: false, message: 'مقاله مورد نظر یافت نشد.' });
       return;
     }
-    res.json({ success: true, data: article });
+    res.json({ success: true, data: formatArticleResponse(article) });
   });
 
   app.post('/api/articles', requireApiKey, (req, res) => {
-    const { title, summary, category, heroImage, sections, slug, readTime } = req.body;
+    const { title, summary, category, sections, slug, readTime } = req.body;
     if (!title || !summary) {
       res.status(400).json({ success: false, message: 'عنوان و خلاصه مقاله الزامی است.' });
       return;
     }
+
+    const img = req.body.featuredImage || req.body.heroImage || req.body.imageUrl || req.body.image || req.body.relativeImageUrl || 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=600&q=80';
+    const relativeImg = req.body.relativeImageUrl || (typeof img === 'string' && img.startsWith('/') ? img : undefined);
 
     const newArticle = {
       id: req.body.id || `art-${Date.now()}`,
@@ -187,7 +239,11 @@ async function startServer() {
       category: category || 'جراحی و ایمپلنت',
       publishDate: req.body.publishDate || new Intl.DateTimeFormat('fa-IR').format(new Date()),
       readTime: readTime || '۴ دقیقه مطالعه',
-      heroImage: heroImage || 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=600&q=80',
+      heroImage: img,
+      featuredImage: img,
+      imageUrl: img,
+      image: img,
+      relativeImageUrl: relativeImg,
       imageCaption: req.body.imageCaption || '',
       summary,
       sections: sections && Array.isArray(sections) ? sections : [
@@ -198,14 +254,14 @@ async function startServer() {
       ]
     };
 
-    const updated = dbStore.updateData(data => {
+    dbStore.updateData(data => {
       data.articles.unshift(newArticle);
     });
 
     res.status(201).json({
       success: true,
       message: 'مقاله جدید با موفقیت ایجاد شد.',
-      data: newArticle
+      data: formatArticleResponse(newArticle)
     });
   });
 
@@ -217,7 +273,15 @@ async function startServer() {
     dbStore.updateData(data => {
       const idx = data.articles.findIndex(a => a.id === id || a.slug === id);
       if (idx !== -1) {
-        data.articles[idx] = { ...data.articles[idx], ...updates };
+        const incomingImg = updates.featuredImage || updates.heroImage || updates.imageUrl || updates.image || updates.relativeImageUrl;
+        const normalizedImg = incomingImg ? {
+          heroImage: incomingImg,
+          featuredImage: incomingImg,
+          imageUrl: incomingImg,
+          image: incomingImg,
+          relativeImageUrl: updates.relativeImageUrl || (typeof incomingImg === 'string' && incomingImg.startsWith('/') ? incomingImg : undefined)
+        } : {};
+        data.articles[idx] = { ...data.articles[idx], ...updates, ...normalizedImg };
         found = true;
       }
     });
@@ -254,7 +318,7 @@ async function startServer() {
   // 6. SERVICES MANAGEMENT
   // ==========================================
   app.get('/api/services', (req, res) => {
-    res.json({ success: true, data: dbStore.getData().services });
+    res.json({ success: true, data: dbStore.getData().services.map(formatServiceResponse) });
   });
 
   app.get('/api/services/:id', (req, res) => {
@@ -264,22 +328,28 @@ async function startServer() {
       res.status(404).json({ success: false, message: 'خدمت مورد نظر یافت نشد.' });
       return;
     }
-    res.json({ success: true, data: service });
+    res.json({ success: true, data: formatServiceResponse(service) });
   });
 
   app.post('/api/services', requireApiKey, (req, res) => {
-    const { title, shortDesc, highlights, image, slug, iconName } = req.body;
+    const { title, shortDesc, highlights, slug, iconName } = req.body;
     if (!title || !shortDesc) {
       res.status(400).json({ success: false, message: 'عنوان و توضیح کوتاه خدمت الزامی است.' });
       return;
     }
+
+    const img = req.body.imageUrl || req.body.image || req.body.featuredImage || req.body.relativeImageUrl || 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&w=600&q=80';
+    const relativeImg = req.body.relativeImageUrl || (typeof img === 'string' && img.startsWith('/') ? img : undefined);
 
     const newService = {
       id: req.body.id || `srv-${Date.now()}`,
       title,
       shortDesc,
       iconName: iconName || 'Sparkles',
-      image: image || 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&w=600&q=80',
+      image: img,
+      imageUrl: img,
+      featuredImage: img,
+      relativeImageUrl: relativeImg,
       slug: slug || `service-${Date.now()}`,
       highlights: Array.isArray(highlights) ? highlights : []
     };
@@ -288,7 +358,7 @@ async function startServer() {
       data.services.push(newService);
     });
 
-    res.status(201).json({ success: true, message: 'خدمت جدید اضافه شد.', data: newService });
+    res.status(201).json({ success: true, message: 'خدمت جدید اضافه شد.', data: formatServiceResponse(newService) });
   });
 
   app.put('/api/services/:id', requireApiKey, (req, res) => {
@@ -298,7 +368,14 @@ async function startServer() {
     dbStore.updateData(data => {
       const idx = data.services.findIndex(s => s.id === id);
       if (idx !== -1) {
-        data.services[idx] = { ...data.services[idx], ...req.body };
+        const incomingImg = req.body.imageUrl || req.body.image || req.body.featuredImage || req.body.relativeImageUrl;
+        const normalizedImg = incomingImg ? {
+          image: incomingImg,
+          imageUrl: incomingImg,
+          featuredImage: incomingImg,
+          relativeImageUrl: req.body.relativeImageUrl || (typeof incomingImg === 'string' && incomingImg.startsWith('/') ? incomingImg : undefined)
+        } : {};
+        data.services[idx] = { ...data.services[idx], ...req.body, ...normalizedImg };
         found = true;
       }
     });

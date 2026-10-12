@@ -17,6 +17,7 @@ import {
   FaqItem,
   AppointmentFormData
 } from '../types';
+import { normalizeArticle, normalizeService } from '../utils/imageHelper';
 
 interface SiteDataContextType {
   doctorProfile: DoctorProfile;
@@ -42,8 +43,8 @@ export const SiteDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return cachedPhoto ? { ...defaultProfile, doctorPhotoUrl: cachedPhoto } : defaultProfile;
   });
   const [clinicHours, setClinicHours] = useState(defaultHours);
-  const [services, setServices] = useState<ServiceItem[]>(defaultServices);
-  const [articles, setArticles] = useState<ProcedureArticle[]>(defaultArticles);
+  const [services, setServices] = useState<ServiceItem[]>(() => defaultServices.map(normalizeService));
+  const [articles, setArticles] = useState<ProcedureArticle[]>(() => defaultArticles.map(normalizeArticle));
   const [gallery, setGallery] = useState<GalleryItem[]>(defaultGallery);
   const [reviews, setReviews] = useState<ReviewItem[]>(defaultReviews);
   const [faqs, setFaqs] = useState<FaqItem[]>(defaultFaqs);
@@ -52,13 +53,13 @@ export const SiteDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const fetchData = async () => {
     try {
+      // 1. Try unified endpoint /api/all
       const res = await fetch('/api/all');
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
           const d = json.data;
           if (d.doctorProfile) {
-            // Keep server photo or local custom photo or default photo
             const localPhoto = localStorage.getItem('doctor_custom_photo');
             setDoctorProfile({
               ...d.doctorProfile,
@@ -66,15 +67,33 @@ export const SiteDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             });
           }
           if (Array.isArray(d.clinicHours) && d.clinicHours.length > 0) setClinicHours(d.clinicHours);
-          if (Array.isArray(d.services) && d.services.length > 0) setServices(d.services);
-          if (Array.isArray(d.articles) && d.articles.length > 0) setArticles(d.articles);
+          if (Array.isArray(d.services) && d.services.length > 0) {
+            setServices(d.services.map(normalizeService));
+          }
+          if (Array.isArray(d.articles) && d.articles.length > 0) {
+            setArticles(d.articles.map(normalizeArticle));
+          }
           if (Array.isArray(d.gallery) && d.gallery.length > 0) setGallery(d.gallery);
           if (Array.isArray(d.reviews) && d.reviews.length > 0) setReviews(d.reviews);
           if (Array.isArray(d.faqs) && d.faqs.length > 0) setFaqs(d.faqs);
+          return;
         }
       }
+
+      // 2. Fallback to individual endpoints if /api/all fails
+      const [articlesRes, servicesRes] = await Promise.allSettled([
+        fetch('/api/articles').then(r => r.ok ? r.json() : null),
+        fetch('/api/services').then(r => r.ok ? r.json() : null)
+      ]);
+
+      if (articlesRes.status === 'fulfilled' && articlesRes.value?.data) {
+        setArticles(articlesRes.value.data.map(normalizeArticle));
+      }
+      if (servicesRes.status === 'fulfilled' && servicesRes.value?.data) {
+        setServices(servicesRes.value.data.map(normalizeService));
+      }
     } catch (err) {
-      console.warn('API /api/all fetch error (using fallback local data):', err);
+      console.warn('API fetch error (using normalized local data):', err);
     } finally {
       setIsLoading(false);
     }

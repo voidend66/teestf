@@ -2,6 +2,7 @@ import React from 'react';
 import { BookOpen, Clock, Calendar, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { procedureArticles } from '../data/doctorData';
 import { ProcedureArticle } from '../types';
+import { getArticleImageUrl, DEFAULT_MEDICAL_FALLBACK } from '../utils/imageHelper';
 
 interface ArticlesSectionProps {
   onSelectArticle: (article: ProcedureArticle) => void;
@@ -34,26 +35,36 @@ export const ArticlesSection: React.FC<ArticlesSectionProps> = ({ onSelectArticl
 
         {/* Articles Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-          {displayArticles.map((article) => (
-            <article
-              key={article.id}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-300 overflow-hidden flex flex-col justify-between text-right group"
-            >
-              <div>
-                {/* Header Image */}
-                {article.heroImage && (
-                  <div className="h-52 overflow-hidden bg-slate-100 relative">
-                    <img
-                      src={article.heroImage}
-                      alt={article.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      loading="lazy"
-                    />
-                    <div className="absolute top-3 right-3 bg-[#1e3a8a]/90 backdrop-blur-md text-white font-bold text-xs px-3 py-1 rounded-lg border border-white/20">
-                      {article.category}
+          {displayArticles.map((article) => {
+            const imageSrc = getArticleImageUrl(article);
+
+            return (
+              <article
+                key={article.id}
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-300 overflow-hidden flex flex-col justify-between text-right group"
+              >
+                <div>
+                  {/* Header Image */}
+                  {imageSrc && (
+                    <div className="h-52 overflow-hidden bg-slate-100 relative">
+                      <img
+                        src={imageSrc}
+                        alt={article.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (target.src !== DEFAULT_MEDICAL_FALLBACK) {
+                            target.src = DEFAULT_MEDICAL_FALLBACK;
+                          }
+                        }}
+                      />
+                      <div className="absolute top-3 right-3 bg-[#1e3a8a]/90 backdrop-blur-md text-white font-bold text-xs px-3 py-1 rounded-lg border border-white/20">
+                        {article.category}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Article Content */}
                 <div className="p-6 space-y-3">
@@ -100,7 +111,8 @@ export const ArticlesSection: React.FC<ArticlesSectionProps> = ({ onSelectArticl
                 </button>
               </div>
             </article>
-          ))}
+          );
+        })}
         </div>
 
       </div>

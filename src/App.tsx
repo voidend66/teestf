@@ -75,6 +75,7 @@ const MainApp: React.FC = () => {
         {/* Specialized Procedures & Services */}
         <ServicesSection
           services={services}
+          articles={articles}
           onSelectArticle={(article) => setSelectedArticle(article)}
           onBookService={handleBookService}
         />

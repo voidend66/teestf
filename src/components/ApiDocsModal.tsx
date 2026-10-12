@@ -109,7 +109,7 @@ const createResponse = await fetch('${baseUrl}/api/articles', {
     category: 'ایمپلنت دندان',
     readTime: '۴ دقیقه',
     summary: 'راهنمای کامل مراقبت‌های ۲۴ ساعت اول پس از جراحی ایمپلنت',
-    heroImage: 'https://images.unsplash.com/...',
+    featuredImage: 'https://ik.imagekit.io/... یا /media/drshahidi/implant.jpg',
     sections: [
       {
         title: 'نکات بهداشتی',

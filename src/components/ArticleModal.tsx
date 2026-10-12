@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { X, Calendar, Clock, CheckCircle2, Phone } from 'lucide-react';
 import { ProcedureArticle } from '../types';
 import { doctorProfile } from '../data/doctorData';
+import { getArticleImageUrl, DEFAULT_MEDICAL_FALLBACK } from '../utils/imageHelper';
 
 interface ArticleModalProps {
   article: ProcedureArticle | null;
@@ -71,23 +72,31 @@ export const ArticleModal: React.FC<ArticleModalProps> = ({ article, onClose, on
         {/* Modal Body (Scrollable) */}
         <div className="overflow-y-auto p-5 sm:p-8 space-y-6 text-slate-800 text-right leading-relaxed">
           {/* Hero Image if available */}
-          {article.heroImage && (
-            <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
-              <img
-                src={article.heroImage}
-                alt={article.title}
-                className="w-full max-h-72 object-cover object-center"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-              {article.imageCaption && (
-                <p className="text-xs text-slate-500 p-2.5 bg-slate-100/80 text-center font-medium">
-                  {article.imageCaption}
-                </p>
-              )}
-            </div>
-          )}
+          {(() => {
+            const imageSrc = getArticleImageUrl(article);
+            if (!imageSrc) return null;
+            return (
+              <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
+                <img
+                  src={imageSrc}
+                  alt={article.title}
+                  className="w-full max-h-72 object-cover object-center"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (target.src !== DEFAULT_MEDICAL_FALLBACK) {
+                      target.src = DEFAULT_MEDICAL_FALLBACK;
+                    }
+                  }}
+                />
+                {article.imageCaption && (
+                  <p className="text-xs text-slate-500 p-2.5 bg-slate-100/80 text-center font-medium">
+                    {article.imageCaption}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Article Summary Quote */}
           {article.summary && (
