@@ -73,7 +73,7 @@ export const ArticleModal: React.FC<ArticleModalProps> = ({ article, onClose, on
         <div className="overflow-y-auto p-5 sm:p-8 space-y-6 text-slate-800 text-right leading-relaxed">
           {/* Hero Image if available */}
           {(() => {
-            const imageSrc = getArticleImageUrl(article);
+            const imageSrc = article.imageUrl || article.featuredImage || article.heroImage || article.image || getArticleImageUrl(article);
             if (!imageSrc) return null;
             return (
               <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">

@@ -136,7 +136,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectArticl
                   {/* Compact Clinical Photo Thumbnail */}
                   <div className="relative h-36 sm:h-40 rounded-xl overflow-hidden bg-slate-100 mb-4 border border-slate-100 shadow-xs">
                     <img
-                      src={getServiceImageUrl(service)}
+                      src={service.imageUrl || service.image || service.featuredImage || getServiceImageUrl(service)}
                       alt={service.title}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

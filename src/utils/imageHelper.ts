@@ -51,8 +51,8 @@ export function resolveMediaUrl(rawPathOrUrl?: string, customBaseUrl?: string): 
 }
 
 /**
- * Resolves the featured image for an article supporting all field aliases:
- * Priority: article.featuredImage || article.heroImage || article.imageUrl || article.image || article.relativeImageUrl
+ * Resolves the image for an article supporting direct public URLs and field aliases:
+ * Priority: article.imageUrl || article.featuredImage || article.heroImage || article.image
  */
 export function getArticleImageUrl(
   article?: Partial<ProcedureArticle> | Record<string, any> | null,
@@ -61,9 +61,9 @@ export function getArticleImageUrl(
   if (!article) return fallback;
 
   const raw =
+    article.imageUrl ||
     article.featuredImage ||
     article.heroImage ||
-    article.imageUrl ||
     article.image ||
     article.relativeImageUrl;
 
@@ -72,8 +72,8 @@ export function getArticleImageUrl(
 }
 
 /**
- * Resolves the service image supporting all field aliases:
- * Priority: service.imageUrl || service.image || service.featuredImage || service.relativeImageUrl
+ * Resolves the service image supporting direct public URLs and field aliases:
+ * Priority: service.imageUrl || service.image || service.featuredImage
  */
 export function getServiceImageUrl(
   service?: Partial<ServiceItem> | Record<string, any> | null,
@@ -86,6 +86,27 @@ export function getServiceImageUrl(
     service.image ||
     service.featuredImage ||
     service.relativeImageUrl;
+
+  const resolved = resolveMediaUrl(raw);
+  return resolved || fallback;
+}
+
+/**
+ * Resolves the gallery / case study image supporting direct public URLs:
+ * Priority: item.imageUrl || item.image || item.featuredImage || item.afterUrl
+ */
+export function getGalleryImageUrl(
+  item?: any,
+  fallback: string = DEFAULT_MEDICAL_FALLBACK
+): string {
+  if (!item) return fallback;
+
+  const raw =
+    item.imageUrl ||
+    item.image ||
+    item.featuredImage ||
+    item.afterUrl ||
+    item.beforeUrl;
 
   const resolved = resolveMediaUrl(raw);
   return resolved || fallback;
@@ -137,3 +158,17 @@ export function normalizeService(service: any): ServiceItem {
     highlights: Array.isArray(service.highlights) ? service.highlights : []
   };
 }
+
+/**
+ * Normalizes a gallery item from API so image URLs are in sync
+ */
+export function normalizeGallery(item: any): any {
+  const resolvedUrl = getGalleryImageUrl(item, '');
+  return {
+    ...item,
+    imageUrl: resolvedUrl || item.imageUrl || item.afterUrl || DEFAULT_MEDICAL_FALLBACK,
+    beforeUrl: resolveMediaUrl(item.beforeUrl) || item.beforeUrl,
+    afterUrl: resolveMediaUrl(item.afterUrl) || item.afterUrl
+  };
+}
+

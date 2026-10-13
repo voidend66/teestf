@@ -36,7 +36,7 @@ export const ArticlesSection: React.FC<ArticlesSectionProps> = ({ onSelectArticl
         {/* Articles Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           {displayArticles.map((article) => {
-            const imageSrc = getArticleImageUrl(article);
+            const imageSrc = article.imageUrl || article.featuredImage || article.heroImage || article.image || getArticleImageUrl(article);
 
             return (
               <article

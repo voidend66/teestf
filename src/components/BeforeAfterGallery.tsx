@@ -126,6 +126,8 @@ export const BeforeAfterGallery: React.FC = () => {
                     <img
                       src={item.imageUrl}
                       alt={item.title}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                     />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-slate-950/40 transition-opacity">
@@ -269,6 +271,7 @@ export const BeforeAfterGallery: React.FC = () => {
                   <img
                     src={selectedCase.imageUrl}
                     alt={selectedCase.title}
+                    referrerPolicy="no-referrer"
                     className="w-full max-h-[420px] object-contain mx-auto"
                   />
                 </div>

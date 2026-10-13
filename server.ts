@@ -43,7 +43,18 @@ async function startServer() {
   app.use(express.json({ limit: '20mb' }));
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
-  // Media reverse proxy support if API_HOST_ADDRESS or MEDIA_PROXY_HOST is set
+  // 1. Static serving of local /media folder with CORS and cache headers
+  const mediaDir = path.join(process.cwd(), 'media');
+  app.use('/media', express.static(mediaDir, {
+    maxAge: '30d',
+    setHeaders: (res) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'public, max-age=2592000');
+    }
+  }));
+
+  // 2. Media reverse proxy support if API_HOST_ADDRESS or MEDIA_PROXY_HOST is set (fallback when not local)
   const API_HOST = process.env.API_HOST_ADDRESS || process.env.MEDIA_PROXY_HOST;
   if (API_HOST) {
     app.use('/media', async (req, res, next) => {
@@ -52,7 +63,7 @@ async function startServer() {
         const targetUrl = `${host}/media${req.url}`;
         const remoteRes = await fetch(targetUrl);
         if (!remoteRes.ok) {
-          res.status(remoteRes.status).send('Media not found on remote server');
+          next();
           return;
         }
         const contentType = remoteRes.headers.get('content-type');
@@ -69,7 +80,7 @@ async function startServer() {
   }
 
   function formatArticleResponse(a: any) {
-    const img = a.featuredImage || a.heroImage || a.imageUrl || a.image || a.relativeImageUrl || '';
+    const img = a.imageUrl || a.featuredImage || a.heroImage || a.image || a.relativeImageUrl || '';
     return {
       ...a,
       heroImage: a.heroImage || img,
@@ -88,6 +99,16 @@ async function startServer() {
       imageUrl: s.imageUrl || img,
       featuredImage: s.featuredImage || img,
       relativeImageUrl: s.relativeImageUrl || (typeof img === 'string' && img.startsWith('/') ? img : undefined)
+    };
+  }
+
+  function formatGalleryResponse(g: any) {
+    const img = g.imageUrl || g.image || g.featuredImage || g.afterUrl || '';
+    return {
+      ...g,
+      imageUrl: g.imageUrl || img,
+      image: g.image || img,
+      featuredImage: g.featuredImage || img
     };
   }
 
@@ -115,7 +136,7 @@ async function startServer() {
         clinicHours: data.clinicHours,
         services: data.services.map(formatServiceResponse),
         articles: data.articles.map(formatArticleResponse),
-        gallery: data.gallery,
+        gallery: data.gallery.map(formatGalleryResponse),
         reviews: data.reviews,
         faqs: data.faqs,
         settings: data.settings,
@@ -406,10 +427,11 @@ async function startServer() {
   // 7. GALLERY & BEFORE-AFTER
   // ==========================================
   app.get('/api/gallery', (req, res) => {
-    res.json({ success: true, data: dbStore.getData().gallery });
+    res.json({ success: true, data: dbStore.getData().gallery.map(formatGalleryResponse) });
   });
 
   app.post('/api/gallery', requireApiKey, (req, res) => {
+    const rawImg = req.body.imageUrl || req.body.image || req.body.featuredImage || req.body.afterUrl || '';
     const item = {
       id: req.body.id || `gal-${Date.now()}`,
       title: req.body.title || 'نمونه درمان بالینی',
@@ -417,15 +439,15 @@ async function startServer() {
       categoryLabel: req.body.categoryLabel || 'ایمپلنت',
       type: req.body.type || (req.body.beforeUrl ? 'before-after' : 'single'),
       beforeUrl: req.body.beforeUrl,
-      afterUrl: req.body.afterUrl,
-      imageUrl: req.body.imageUrl,
+      afterUrl: req.body.afterUrl || rawImg,
+      imageUrl: rawImg,
       description: req.body.description || ''
     };
 
     dbStore.updateData(data => {
       data.gallery.unshift(item);
     });
-    res.status(201).json({ success: true, message: 'آیتم جدید به گالری افزوده شد.', data: item });
+    res.status(201).json({ success: true, message: 'آیتم جدید به گالری افزوده شد.', data: formatGalleryResponse(item) });
   });
 
   app.delete('/api/gallery/:id', requireApiKey, (req, res) => {

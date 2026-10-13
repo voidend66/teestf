@@ -17,7 +17,7 @@ import {
   FaqItem,
   AppointmentFormData
 } from '../types';
-import { normalizeArticle, normalizeService } from '../utils/imageHelper';
+import { normalizeArticle, normalizeService, normalizeGallery } from '../utils/imageHelper';
 
 interface SiteDataContextType {
   doctorProfile: DoctorProfile;
@@ -45,7 +45,7 @@ export const SiteDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [clinicHours, setClinicHours] = useState(defaultHours);
   const [services, setServices] = useState<ServiceItem[]>(() => defaultServices.map(normalizeService));
   const [articles, setArticles] = useState<ProcedureArticle[]>(() => defaultArticles.map(normalizeArticle));
-  const [gallery, setGallery] = useState<GalleryItem[]>(defaultGallery);
+  const [gallery, setGallery] = useState<GalleryItem[]>(() => defaultGallery.map(normalizeGallery));
   const [reviews, setReviews] = useState<ReviewItem[]>(defaultReviews);
   const [faqs, setFaqs] = useState<FaqItem[]>(defaultFaqs);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -73,7 +73,9 @@ export const SiteDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (Array.isArray(d.articles) && d.articles.length > 0) {
             setArticles(d.articles.map(normalizeArticle));
           }
-          if (Array.isArray(d.gallery) && d.gallery.length > 0) setGallery(d.gallery);
+          if (Array.isArray(d.gallery) && d.gallery.length > 0) {
+            setGallery(d.gallery.map(normalizeGallery));
+          }
           if (Array.isArray(d.reviews) && d.reviews.length > 0) setReviews(d.reviews);
           if (Array.isArray(d.faqs) && d.faqs.length > 0) setFaqs(d.faqs);
           return;
